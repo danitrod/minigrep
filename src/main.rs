@@ -1,15 +1,33 @@
 use std::env;
+use std::fs;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() < 3 {
-        println!("Usage: {} <query> <filename>", &args[0]);
-        std::process::exit(1);
+    let config = Config::new(&args);
+
+    println!("Searching for {}", config.query);
+    println!("In file {}", config.filename);
+
+    let contents =
+        fs::read_to_string(config.filename).expect("Something went wrong reading the file");
+
+    println!("With text:\n{}", contents);
+}
+
+struct Config {
+    query: String,
+    filename: String,
+}
+
+impl Config {
+    fn new(args: &[String]) -> Config {
+        if args.len() < 3 {
+            panic!("Not enough arguments (minimum 2)");
+        }
+
+        let query = args[1].clone();
+        let filename = args[2].clone();
+
+        Config { query, filename }
     }
-
-    let query = &args[1];
-    let filename = &args[2];
-
-    println!("Searching for {}", query);
-    println!("In file {}", filename);
 }
