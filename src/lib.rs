@@ -14,52 +14,57 @@ pub struct Config {
 }
 
 impl Config {
-  pub fn new(args: &[String]) -> Result<Config, String> {
-    let args_len = args.len();
-    if args_len < 3 {
-      return Err(format!(
-        "{prog}: {err}\nUsage: {prog} {help}",
-        prog = args[0],
-        err = UNSUFFICIENT_ARGUMENTS,
-        help = HELP_TEXT
-      ));
-    }
+  pub fn new(mut args: env::Args) -> Result<Config, String> {
+    let programname = match args.next() {
+      Some(f) => f,
+      None => panic!("Unexpected error"),
+    };
+    let arguments_err = Err(format!(
+      "{prog}: {err}\nUsage: {prog} {help}",
+      prog = programname,
+      err = UNSUFFICIENT_ARGUMENTS,
+      help = HELP_TEXT
+    ));
+    let query = match args.next() {
+      Some(q) => q,
+      None => return arguments_err,
+    };
+    let filename = match args.next() {
+      Some(f) => f,
+      None => return arguments_err,
+    };
 
     let mut case_sensitive = env::var("CASE_INSENSITIVE").is_err();
-    if args_len >= 4 {
+    for arg in args {
       // Parse argument options
-      for arg_counter in 3..args_len {
-        let mut arg_chars = args[arg_counter].chars();
-        let first_token = arg_chars.next().unwrap();
-        if first_token == '-' {
-          let option = arg_chars.next().unwrap();
+      let mut arg_chars = arg.chars();
+      let first_token = arg_chars.next().unwrap();
+      if first_token == '-' {
+        for option in arg_chars {
           match option {
             'i' => case_sensitive = false,
             _ => {
               return Err(format!(
-                "{prog}: {err} -{op}\nUsage: {prog} {help}",
-                prog = args[0],
+                "{prog}: {err} `{op}`\nUsage: {prog} {help}",
+                prog = programname,
                 err = UNSUPPORTED_OPTION,
                 op = option,
                 help = HELP_TEXT
               ));
             }
           }
-        } else {
-          return Err(format!(
-            "{prog}: {err} {first_token}{rest}\nUsage: {prog} {help}",
-            prog = args[0],
-            err = UNEXPECTED_ARGUMENT,
-            first_token = first_token,
-            rest = arg_chars.as_str(),
-            help = HELP_TEXT
-          ));
         }
+      } else {
+        return Err(format!(
+          "{prog}: {err} {first_token}{rest}\nUsage: {prog} {help}",
+          prog = programname,
+          err = UNEXPECTED_ARGUMENT,
+          first_token = first_token,
+          rest = arg_chars.as_str(),
+          help = HELP_TEXT
+        ));
       }
     }
-
-    let query = args[1].clone();
-    let filename = args[2].clone();
 
     Ok(Config {
       query,
@@ -86,15 +91,10 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
 }
 
 pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
-  let mut results = Vec::new();
-
-  for line in contents.lines() {
-    if line.contains(query) {
-      results.push(line);
-    }
-  }
-
-  results
+  contents
+    .lines()
+    .filter(|line| line.contains(query))
+    .collect()
 }
 
 pub fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
